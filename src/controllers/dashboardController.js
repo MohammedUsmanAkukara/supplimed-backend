@@ -4,6 +4,7 @@ import { Page } from '../models/Page.js';
 import { Inquiry } from '../models/Inquiry.js';
 import { Media } from '../models/Media.js';
 import { AuditLog } from '../models/AuditLog.js';
+import { Certificate } from '../models/Certificate.js';
 
 export const getDashboardStats = async (req, res, next) => {
   try {
@@ -17,6 +18,7 @@ export const getDashboardStats = async (req, res, next) => {
       inProgressInquiries,
       resolvedInquiries,
       totalMedia,
+      totalCertificates,
       recentInquiries,
       recentProducts,
       recentActivity
@@ -30,6 +32,7 @@ export const getDashboardStats = async (req, res, next) => {
       Inquiry.countDocuments({ status: 'in_progress' }),
       Inquiry.countDocuments({ status: 'resolved' }),
       Media.countDocuments(),
+      Certificate.countDocuments(),
       Inquiry.find().sort({ createdAt: -1 }).limit(5).lean(),
       Product.find().populate('category', 'name').sort({ updatedAt: -1 }).limit(5).lean(),
       AuditLog.find().sort({ createdAt: -1 }).limit(8).lean()
@@ -52,6 +55,7 @@ export const getDashboardStats = async (req, res, next) => {
           resolved: resolvedInquiries
         },
         media: totalMedia,
+        certificates: totalCertificates,
         analyticsStatus: 'Not Connected (Google Analytics ID not configured in settings)'
       },
       recentInquiries,

@@ -25,8 +25,11 @@ export const config = {
     provider: process.env.EMAIL_PROVIDER || 'smtp',
     from: process.env.EMAIL_FROM || 'sales@supplimed.in',
     host: process.env.EMAIL_HOST || '',
-    port: process.env.EMAIL_PORT || 587,
+    port: parseInt(process.env.EMAIL_PORT, 10) || 587,
+    secure: process.env.EMAIL_SECURE === 'true' || process.env.EMAIL_PORT === '465',
     user: process.env.EMAIL_USER || '',
-    pass: process.env.EMAIL_PASS || ''
+    pass: process.env.EMAIL_PASS || '',
+    service: process.env.EMAIL_SERVICE || '',
+    adminEmail: process.env.ADMIN_NOTIFICATION_EMAIL || process.env.EMAIL_FROM || 'sales@supplimed.in'
   }
 };

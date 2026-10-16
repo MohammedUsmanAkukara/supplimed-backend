@@ -4,6 +4,7 @@ import { Product } from '../models/Product.js';
 import { Page } from '../models/Page.js';
 import { Setting } from '../models/Setting.js';
 import { Navigation } from '../models/Navigation.js';
+import { Certificate } from '../models/Certificate.js';
 import { connectDB, closeDB } from '../config/db.js';
 
 export async function seedInitialData() {
@@ -336,21 +337,99 @@ export async function seedInitialData() {
       console.log('[Seed] Created default global settings');
     }
 
-    // 5. Seed Navigation Items
+    // 5. Seed Certificates
+    console.log('[Seed] Seeding certificates...');
+    const certificatesData = [
+      {
+        title: 'ISO 13485:2016 Medical Devices Quality Management System',
+        certificateNumber: 'SUP-ISO13485-9824',
+        issuingBody: 'TÜV Rheinland / CDSCO Accredited Registrar',
+        category: 'Medical Device Quality',
+        issueDate: new Date('2024-01-10'),
+        expiryDate: new Date('2027-01-09'),
+        fileUrl: '/images/cert-iso13485.svg',
+        fileType: 'image',
+        thumbnailUrl: '/images/cert-iso13485.svg',
+        description: 'Design, Automated Manufacturing, Cleanroom Packaging, and Global Distribution of Sterile and Non-Sterile In-Vitro Diagnostic Medical Devices including Vacuum Blood Collection Tubes (HemoVac Plus) and Specimen Transport Consumables.',
+        status: 'published',
+        displayOrder: 1,
+        featured: true,
+        downloadable: true
+      },
+      {
+        title: 'ISO 9001:2015 Quality Management Systems',
+        certificateNumber: 'SUP-ISO9001-4412',
+        issuingBody: 'Bureau Veritas / International Accreditation Forum',
+        category: 'Quality Management',
+        issueDate: new Date('2023-03-15'),
+        expiryDate: new Date('2026-03-14'),
+        fileUrl: '/images/cert-iso9001.svg',
+        fileType: 'image',
+        thumbnailUrl: '/images/cert-iso9001.svg',
+        description: 'Manufacture, Automated Assembly, Quality Inspection, and Global Supply of Clinical Diagnostic Consumables, Polypropylene Laboratory Containers, and Vacuum Evacuated Specimen Collection Tubes.',
+        status: 'published',
+        displayOrder: 2,
+        featured: true,
+        downloadable: true
+      },
+      {
+        title: 'CDSCO Medical Device Manufacturing License (MD-5)',
+        certificateNumber: 'CDSCO-MFG-MD5-2024-0089',
+        issuingBody: 'Central Drugs Standard Control Organisation (Govt. of India)',
+        category: 'Regulatory License',
+        issueDate: new Date('2024-05-01'),
+        expiryDate: new Date('2029-04-30'),
+        fileUrl: '/images/cert-iso13485.svg',
+        fileType: 'image',
+        thumbnailUrl: '/images/cert-iso13485.svg',
+        description: 'Statutory manufacturing license for In-Vitro Diagnostic Medical Devices, Specimen Collection Tubes, and Medical-Grade Laboratory Plastics under Medical Device Rules (MDR 2017).',
+        status: 'published',
+        displayOrder: 3,
+        featured: true,
+        downloadable: true
+      },
+      {
+        title: 'CE Mark Declaration of Technical Conformity',
+        certificateNumber: 'CE-IVD-98-79-EC',
+        issuingBody: 'European Conformity Assessment Body',
+        category: 'Product Compliance',
+        issueDate: new Date('2023-11-20'),
+        expiryDate: new Date('2026-11-19'),
+        fileUrl: '/images/cert-iso9001.svg',
+        fileType: 'image',
+        thumbnailUrl: '/images/cert-iso9001.svg',
+        description: 'Compliance with EU In-Vitro Diagnostic Directive 98/79/EC and Regulation (EU) 2017/746 for European healthcare supply.',
+        status: 'published',
+        displayOrder: 4,
+        featured: false,
+        downloadable: true
+      }
+    ];
+
+    for (const cert of certificatesData) {
+      const existing = await Certificate.findOne({ certificateNumber: cert.certificateNumber });
+      if (!existing) {
+        await Certificate.create(cert);
+        console.log(`[Seed] Created certificate: ${cert.title}`);
+      }
+    }
+
+    // 6. Seed Navigation Items
     console.log('[Seed] Seeding navigation items...');
     const navItems = [
       // Header
       { placement: 'header', label: 'Home', url: '/', order: 1 },
       { placement: 'header', label: 'About Us', url: '/about', order: 2 },
       { placement: 'header', label: 'Products', url: '/products', order: 3 },
-      { placement: 'header', label: 'Gallery', url: '/gallery', order: 4 },
-      { placement: 'header', label: 'Contact', url: '/contact', order: 5 },
+      { placement: 'header', label: 'Certificates', url: '/certificates', order: 4 },
+      { placement: 'header', label: 'Gallery', url: '/gallery', order: 5 },
+      { placement: 'header', label: 'Contact', url: '/contact', order: 6 },
       // Footer Company
       { placement: 'footer_company', label: 'About Us', url: '/about', order: 1 },
       { placement: 'footer_company', label: 'Our Products', url: '/products', order: 2 },
-      { placement: 'footer_company', label: 'Facility Gallery', url: '/gallery', order: 3 },
-      { placement: 'footer_company', label: 'Contact & Support', url: '/contact', order: 4 },
-      { placement: 'footer_company', label: 'Quality Certificates', url: '/about#certificates', order: 5 },
+      { placement: 'footer_company', label: 'Certificates & ISO', url: '/certificates', order: 3 },
+      { placement: 'footer_company', label: 'Facility Gallery', url: '/gallery', order: 4 },
+      { placement: 'footer_company', label: 'Contact & Support', url: '/contact', order: 5 },
       // Footer Categories
       { placement: 'footer_categories', label: 'Vacuum Blood Tubes', url: '/products?category=vacuum-tubes', order: 1 },
       { placement: 'footer_categories', label: 'Sample Transport', url: '/products?category=sample-transport', order: 2 },
@@ -365,6 +444,9 @@ export async function seedInitialData() {
       const existing = await Navigation.findOne({ placement: item.placement, label: item.label });
       if (!existing) {
         await Navigation.create(item);
+      } else if (item.label.includes('Certificate') && existing.url !== '/certificates') {
+        existing.url = '/certificates';
+        await existing.save();
       }
     }
     console.log('[Seed] Navigation items seeded.');

@@ -71,6 +71,18 @@ const settingSchema = new mongoose.Schema(
       type: String,
       default: 'MB Plastic Industries, B75, Sector 83, Noida, UP 201305 INDIA'
     },
+    mapIframe: {
+      type: String,
+      default: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1m2!1s0x390d9d020d0f7aeb%3A0x2f9cb79e7e0b57e7!2sSector%2083%2C%20Noida%2C%20Uttar%20Pradesh%20201305!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin'
+    },
+    mapTitle: {
+      type: String,
+      default: 'Supplimed Manufacturing Facility'
+    },
+    notificationEmail: {
+      type: String,
+      default: 'sales@supplimed.in'
+    },
     socialLinks: {
       linkedin: { type: String, default: '' },
       twitter: { type: String, default: '' },

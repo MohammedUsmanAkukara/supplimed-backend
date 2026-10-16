@@ -1,5 +1,6 @@
 import { Inquiry } from '../models/Inquiry.js';
 import { logAuditAction } from '../utils/auditLogger.js';
+import { sendInquiryEmails } from '../utils/mailer.js';
 
 const generateReference = () => {
   const date = new Date();
@@ -55,9 +56,14 @@ export const createInquiry = async (req, res, next) => {
       userAgent
     });
 
+    // Send two-way email notification (Admin + Customer) asynchronously
+    sendInquiryEmails({ inquiry }).catch((err) => {
+      console.warn('[Mailer Notice] Background inquiry email sending failed:', err.message);
+    });
+
     res.status(201).json({
       success: true,
-      message: 'Your enquiry has been received successfully. Our team will contact you shortly.',
+      message: 'Your enquiry has been received successfully. A confirmation email has been dispatched to your inbox.',
       reference: inquiry.reference
     });
   } catch (error) {

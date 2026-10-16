@@ -152,8 +152,34 @@ describe('Supplimed Public & Admin API Test Suite', () => {
     expect(res.body.reference).toMatch(/^SUP-\d{6}-\d{4}$/);
   });
 
-  // 10. Admin Dashboard stats
-  test('GET /api/admin/dashboard/stats should return real aggregated metrics', async () => {
+  // 10. Admin Certificate creation & public retrieval
+  test('POST /api/certificates/admin should create an ISO certificate', async () => {
+    const res = await request(app)
+      .post('/api/certificates/admin')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        title: 'ISO 13485:2016 Medical Devices Quality Management System',
+        certificateNumber: 'SUP-ISO13485-TEST',
+        issuingBody: 'TUV Rheinland',
+        category: 'Medical Device Quality',
+        fileUrl: '/images/cert-iso13485.svg',
+        status: 'published'
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.certificate.title).toBe('ISO 13485:2016 Medical Devices Quality Management System');
+  });
+
+  test('GET /api/certificates should return published certificates', async () => {
+    const res = await request(app).get('/api/certificates');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.certificates.length).toBeGreaterThan(0);
+  });
+
+  // 11. Admin Dashboard stats
+  test('GET /api/admin/dashboard/stats should return real aggregated metrics including certificates', async () => {
     const res = await request(app)
       .get('/api/admin/dashboard/stats')
       .set('Authorization', `Bearer ${adminToken}`);
@@ -162,6 +188,7 @@ describe('Supplimed Public & Admin API Test Suite', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.stats.products.published).toBe(1);
     expect(res.body.stats.categories).toBe(1);
+    expect(res.body.stats.certificates).toBe(1);
     expect(res.body.stats.inquiries.new).toBe(1);
   });
 });
