@@ -30,8 +30,8 @@ export const getTransporter = async (passedSettings = null) => {
 
   // 2. Check if dynamic SMTP is configured in Admin Panel
   const dynamicSmtp = settings?.smtp;
-  if (dynamicSmtp && dynamicSmtp.host && dynamicSmtp.user) {
-    const port = Number(dynamicSmtp.port) || 587;
+  if (dynamicSmtp && dynamicSmtp.host && dynamicSmtp.user && dynamicSmtp.enabled !== false) {
+    const port = Number(dynamicSmtp.port) || 465;
     const isSecure = Boolean(dynamicSmtp.secure) || port === 465;
 
     return nodemailer.createTransport({
@@ -245,7 +245,7 @@ export const sendInquiryEmails = async ({ inquiry }) => {
     const adminRecipient = settings?.notificationEmail || settings?.contactEmail || config.email.adminEmail;
 
     const fromName = settings?.smtp?.fromName || settings?.websiteName || 'Supplimed';
-    const fromEmail = settings?.smtp?.fromEmail || settings?.contactEmail || config.email.from;
+    const fromEmail = settings?.smtp?.fromEmail || settings?.smtp?.user || config.email.from || settings?.contactEmail || 'support@supplimed.in';
     const senderFrom = `"${fromName}" <${fromEmail}>`;
 
     const transporter = await getTransporter(settings);
@@ -268,30 +268,28 @@ export const sendInquiryEmails = async ({ inquiry }) => {
     };
 
     if (transporter) {
-      // Send both emails in parallel
-      const results = await Promise.allSettled([
-        transporter.sendMail(adminMailOptions),
-        transporter.sendMail(customerMailOptions)
-      ]);
+      let adminSent = false;
+      let customerSent = false;
 
-      const adminResult = results[0];
-      const customerResult = results[1];
-
-      if (adminResult.status === 'fulfilled') {
+      try {
+        await transporter.sendMail(adminMailOptions);
+        adminSent = true;
         console.log(`[Nodemailer] Admin notification sent successfully to ${adminRecipient} for ${inquiry.reference}`);
-      } else {
-        console.warn(`[Nodemailer Warning] Failed to send admin notification:`, adminResult.reason?.message || adminResult.reason);
+      } catch (adminErr) {
+        console.warn(`[Nodemailer Warning] Failed to send admin notification:`, adminErr?.message || adminErr);
       }
 
-      if (customerResult.status === 'fulfilled') {
+      try {
+        await transporter.sendMail(customerMailOptions);
+        customerSent = true;
         console.log(`[Nodemailer] Customer acknowledgment sent successfully to ${inquiry.email} for ${inquiry.reference}`);
-      } else {
-        console.warn(`[Nodemailer Warning] Failed to send customer acknowledgment:`, customerResult.reason?.message || customerResult.reason);
+      } catch (customerErr) {
+        console.warn(`[Nodemailer Warning] Failed to send customer acknowledgment:`, customerErr?.message || customerErr);
       }
 
       return {
-        adminSent: adminResult.status === 'fulfilled',
-        customerSent: customerResult.status === 'fulfilled'
+        adminSent,
+        customerSent
       };
     } else {
       // Mock / Dev fallback: Log cleanly so developers can inspect email output

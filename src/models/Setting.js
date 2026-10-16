@@ -86,20 +86,20 @@ const settingSchema = new mongoose.Schema(
     smtp: {
       enabled: {
         type: Boolean,
-        default: false
+        default: true
       },
       host: {
         type: String,
-        default: '',
+        default: 'sg2plzcpnl509592.prod.sin2.secureserver.net',
         trim: true
       },
       port: {
         type: Number,
-        default: 587
+        default: 465
       },
       secure: {
         type: Boolean,
-        default: false
+        default: true
       },
       requireTls: {
         type: Boolean,
@@ -107,17 +107,17 @@ const settingSchema = new mongoose.Schema(
       },
       user: {
         type: String,
-        default: '',
+        default: 'support@supplimed.in',
         trim: true
       },
       pass: {
         type: String,
-        default: '',
+        default: '@Hb1t7bbknj',
         trim: true
       },
       fromEmail: {
         type: String,
-        default: 'sales@supplimed.in',
+        default: 'support@supplimed.in',
         trim: true
       },
       fromName: {
