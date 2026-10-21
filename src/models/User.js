@@ -46,8 +46,17 @@ const userSchema = new mongoose.Schema(
       type: String,
       select: false
     },
+    resetPasswordOtp: {
+      type: String,
+      select: false
+    },
     resetPasswordExpire: {
       type: Date,
+      select: false
+    },
+    resetPasswordAttempts: {
+      type: Number,
+      default: 0,
       select: false
     }
   },
@@ -78,7 +87,9 @@ userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
   delete obj.resetPasswordToken;
+  delete obj.resetPasswordOtp;
   delete obj.resetPasswordExpire;
+  delete obj.resetPasswordAttempts;
   return obj;
 };
 

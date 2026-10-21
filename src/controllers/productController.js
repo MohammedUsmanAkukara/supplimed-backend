@@ -240,17 +240,22 @@ export const createProduct = async (req, res, next) => {
       });
     }
 
-    const finalSlug = slug
+    let finalSlug = slug
       ? slugify(slug, { lower: true, strict: true })
       : slugify(name, { lower: true, strict: true });
 
     const existingSlug = await Product.findOne({ slug: finalSlug });
     if (existingSlug) {
-      return res.status(409).json({
-        success: false,
-        message: 'A product with this slug already exists.'
-      });
+      finalSlug = `${finalSlug}-${Date.now().toString().slice(-4)}`;
     }
+
+    // Auto-clean specifications and attributes to prevent validation errors
+    const cleanSpecs = Array.isArray(specifications)
+      ? specifications.filter((s) => s && typeof s.key === 'string' && s.key.trim() && typeof s.value === 'string' && s.value.trim())
+      : [];
+    const cleanAttrs = Array.isArray(attributes)
+      ? attributes.filter((a) => a && typeof a.name === 'string' && a.name.trim() && typeof a.value === 'string' && a.value.trim())
+      : [];
 
     const product = await Product.create({
       name,
@@ -262,8 +267,8 @@ export const createProduct = async (req, res, next) => {
       packSize: packSize || '',
       featuredImage: featuredImage || '',
       images: Array.isArray(images) ? images : [],
-      specifications: Array.isArray(specifications) ? specifications : [],
-      attributes: Array.isArray(attributes) ? attributes : [],
+      specifications: cleanSpecs,
+      attributes: cleanAttrs,
       status: status || 'published',
       isFeatured: !!isFeatured,
       displayOrder: displayOrder || 0,
@@ -316,6 +321,18 @@ export const updateProduct = async (req, res, next) => {
           message: 'Slug is already used by another product.'
         });
       }
+    }
+
+    if (updates.specifications && Array.isArray(updates.specifications)) {
+      updates.specifications = updates.specifications.filter(
+        (s) => s && typeof s.key === 'string' && s.key.trim() && typeof s.value === 'string' && s.value.trim()
+      );
+    }
+
+    if (updates.attributes && Array.isArray(updates.attributes)) {
+      updates.attributes = updates.attributes.filter(
+        (a) => a && typeof a.name === 'string' && a.name.trim() && typeof a.value === 'string' && a.value.trim()
+      );
     }
 
     if (updates.status === 'published') {

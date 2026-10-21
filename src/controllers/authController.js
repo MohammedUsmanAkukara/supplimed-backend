@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
 import { config } from '../config/env.js';
 import { logAuditAction } from '../utils/auditLogger.js';
+import { sendOtpResetEmail, sendPasswordChangedConfirmationEmail } from '../utils/mailer.js';
 
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, config.jwtSecret, {
@@ -157,6 +158,167 @@ export const updateProfile = async (req, res, next) => {
       success: true,
       message: 'Profile updated successfully.',
       user: user.toJSON()
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Request Password Reset OTP via Email
+ */
+export const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email || !email.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email address is required.'
+      });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: cleanEmail });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'No administrator account found with this email address.'
+      });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({
+        success: false,
+        message: 'Account is deactivated. Please contact Super Administrator.'
+      });
+    }
+
+    // Generate random 6-digit numeric OTP code
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.resetPasswordOtp = otp;
+    user.resetPasswordExpire = new Date(Date.now() + 15 * 60 * 1000); // 15 mins expiry
+    user.resetPasswordAttempts = 0;
+    await user.save({ validateBeforeSave: false });
+
+    // Send email via nodemailer
+    try {
+      await sendOtpResetEmail({
+        to: user.email,
+        name: user.name,
+        otp
+      });
+    } catch (emailErr) {
+      console.warn('[ForgotPassword Warning] Email dispatch failed:', emailErr.message);
+      if (config.nodeEnv === 'production') {
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to dispatch verification email. Please contact administrator.'
+        });
+      }
+    }
+
+    await logAuditAction({
+      user,
+      action: 'PASSWORD_RESET_REQUESTED',
+      targetType: 'User',
+      targetId: user._id,
+      details: { email: user.email }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `A 6-digit verification code has been dispatched to ${user.email}. Please check your inbox.`
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Verify 6-digit OTP and Reset Password
+ */
+export const verifyResetOtp = async (req, res, next) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email, 6-digit OTP, and new password are required.'
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 8 characters long.'
+      });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanOtp = String(otp).trim();
+
+    const user = await User.findOne({ email: cleanEmail })
+      .select('+resetPasswordOtp +resetPasswordExpire +resetPasswordAttempts');
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid request or administrator not found.'
+      });
+    }
+
+    // Check expiration
+    if (!user.resetPasswordExpire || user.resetPasswordExpire < new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Verification OTP has expired. Please request a new code.'
+      });
+    }
+
+    // Rate limiting: max 5 attempts
+    if (user.resetPasswordAttempts >= 5) {
+      return res.status(429).json({
+        success: false,
+        message: 'Too many incorrect attempts. Please request a new OTP.'
+      });
+    }
+
+    // Compare OTP
+    if (user.resetPasswordOtp !== cleanOtp) {
+      user.resetPasswordAttempts = (user.resetPasswordAttempts || 0) + 1;
+      await user.save({ validateBeforeSave: false });
+      return res.status(400).json({
+        success: false,
+        message: `Invalid 6-digit OTP code. (${5 - user.resetPasswordAttempts} attempts remaining)`
+      });
+    }
+
+    // OTP matched! Update password and clear OTP
+    user.password = newPassword; // Will be hashed by pre('save') hook
+    user.resetPasswordOtp = undefined;
+    user.resetPasswordExpire = undefined;
+    user.resetPasswordAttempts = 0;
+    await user.save();
+
+    // Send confirmation email asynchronously
+    sendPasswordChangedConfirmationEmail({
+      to: user.email,
+      name: user.name
+    }).catch(() => {});
+
+    await logAuditAction({
+      user,
+      action: 'PASSWORD_RESET_SUCCESSFUL',
+      targetType: 'User',
+      targetId: user._id,
+      details: { email: user.email }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successfully! You can now log in with your new credentials.'
     });
   } catch (error) {
     next(error);

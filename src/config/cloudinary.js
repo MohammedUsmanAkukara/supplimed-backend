@@ -4,6 +4,11 @@ import { Readable } from 'stream';
 import path from 'path';
 import fs from 'fs';
 
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Configure Cloudinary if credentials exist
 const isCloudinaryConfigured = !!(
   config.cloudinary.cloudName &&
@@ -20,8 +25,8 @@ if (isCloudinaryConfigured) {
   });
 }
 
-// Local storage directory fallback
-const uploadsDir = path.resolve('public', 'uploads');
+// Local storage directory fallback (always server/public/uploads)
+const uploadsDir = path.join(__dirname, '..', '..', 'public', 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }

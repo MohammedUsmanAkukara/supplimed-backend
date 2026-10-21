@@ -3,16 +3,16 @@ import slugify from 'slugify';
 
 const specificationSchema = new mongoose.Schema(
   {
-    key: { type: String, required: true, trim: true },
-    value: { type: String, required: true, trim: true }
+    key: { type: String, trim: true, default: '' },
+    value: { type: String, trim: true, default: '' }
   },
   { _id: false }
 );
 
 const attributeSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true },
-    value: { type: String, required: true, trim: true }
+    name: { type: String, trim: true, default: '' },
+    value: { type: String, trim: true, default: '' }
   },
   { _id: false }
 );
@@ -114,6 +114,20 @@ productSchema.pre('validate', function (next) {
   if (this.name && !this.slug) {
     this.slug = slugify(this.name, { lower: true, strict: true });
   }
+
+  // Auto-clean empty specifications and attributes to prevent validation issues
+  if (Array.isArray(this.specifications)) {
+    this.specifications = this.specifications.filter(
+      (s) => s && typeof s.key === 'string' && s.key.trim() && typeof s.value === 'string' && s.value.trim()
+    );
+  }
+
+  if (Array.isArray(this.attributes)) {
+    this.attributes = this.attributes.filter(
+      (a) => a && typeof a.name === 'string' && a.name.trim() && typeof a.value === 'string' && a.value.trim()
+    );
+  }
+
   next();
 });
 

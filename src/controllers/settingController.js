@@ -149,7 +149,7 @@ export const testSmtpSettings = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: `Test email sent successfully to ${result.recipient}! SMTP & TLS credentials verified.`,
+      message: `Test email sent successfully to ${result.recipient}! SMTP & TLS credentials verified. Please check both your Inbox and Spam/Junk folder.`,
       result
     });
   } catch (error) {

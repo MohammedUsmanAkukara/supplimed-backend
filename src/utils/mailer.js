@@ -14,7 +14,7 @@ try {
  * then falls back to environment variables in config.email, and lastly null (simulation).
  */
 export const getTransporter = async (passedSettings = null) => {
-  if (!nodemailer) {
+  if (!nodemailer || config.nodeEnv === 'test') {
     return null;
   }
 
@@ -236,6 +236,66 @@ const buildCustomerEmailHtml = (inquiry, settings) => {
 };
 
 /**
+ * Builds Plaintext template for Admin Notification (crucial for spam filters)
+ */
+const buildAdminEmailText = (inquiry, settings) => {
+  const brandName = settings?.websiteName || 'Supplimed';
+  return `
+${brandName} - New Sales Enquiry
+Reference ID: ${inquiry.reference}
+
+Customer Name: ${inquiry.name}
+Email Address: ${inquiry.email}
+Phone Number: ${inquiry.phone || 'N/A'}
+Organization/Company: ${inquiry.company || 'N/A'}
+Product of Interest: ${inquiry.interest || 'General'}
+Source: ${inquiry.source || 'Website'}
+
+Customer Message:
+${inquiry.message || 'No additional message provided.'}
+
+Timestamp: ${new Date().toLocaleString()}
+Please reply directly to ${inquiry.email} to contact this customer.
+`;
+};
+
+/**
+ * Builds Plaintext template for Customer Confirmation (crucial for spam filters)
+ */
+const buildCustomerEmailText = (inquiry, settings) => {
+  const brandName = settings?.websiteName || 'Supplimed';
+  const supportEmail = settings?.contactEmail || 'sales@supplimed.in';
+  const phone = settings?.contactPhone || '+91 97622 10484';
+  const address = settings?.address || 'Shop No-04, Sr No-1148, Bhairat Building, Near Datta Mandir, Bopodi, Pune';
+
+  return `
+Hello ${inquiry.name},
+
+Thank you for contacting ${brandName}.
+We have successfully received your product inquiry regarding "${inquiry.interest || 'our medical diagnostic products'}".
+
+Your Enquiry Reference ID is: ${inquiry.reference}
+
+Our technical sales team is reviewing your requirements and will reach out to you within 24 business hours.
+
+Enquiry Summary:
+- Reference: ${inquiry.reference}
+- Name: ${inquiry.name}
+- Product: ${inquiry.interest || 'General'}
+- Message: ${inquiry.message || 'N/A'}
+
+Need immediate assistance?
+- Official Email: ${supportEmail}
+- Support Phone: ${phone}
+- Facility: ${address}
+
+Sincerely,
+${brandName} Technical Sales & Quality Assurance
+ISO 13485:2016 Certified Manufacturing
+`;
+};
+
+/**
  * Sends both Admin Notification and Customer Confirmation emails
  */
 export const sendInquiryEmails = async ({ inquiry }) => {
@@ -246,25 +306,38 @@ export const sendInquiryEmails = async ({ inquiry }) => {
 
     const fromName = settings?.smtp?.fromName || settings?.websiteName || 'Supplimed';
     const fromEmail = settings?.smtp?.fromEmail || settings?.smtp?.user || config.email.from || settings?.contactEmail || 'support@supplimed.in';
-    const senderFrom = `"${fromName}" <${fromEmail}>`;
+    const sender = {
+      name: fromName,
+      address: fromEmail
+    };
 
     const transporter = await getTransporter(settings);
 
-    // Prepare email payloads
+    // Prepare email payloads with both text and html (multipart/alternative)
     const adminMailOptions = {
-      from: senderFrom,
+      from: sender,
       to: adminRecipient,
       replyTo: `"${inquiry.name}" <${inquiry.email}>`,
       subject: `[New Enquiry ${inquiry.reference}] ${inquiry.name} - ${inquiry.interest || 'Supplimed'}`,
-      html: buildAdminEmailHtml(inquiry, settings)
+      text: buildAdminEmailText(inquiry, settings),
+      html: buildAdminEmailHtml(inquiry, settings),
+      headers: {
+        'X-Mailer': 'Supplimed-Mailer/1.0',
+        'X-Entity-Ref-ID': inquiry.reference
+      }
     };
 
     const customerMailOptions = {
-      from: senderFrom,
+      from: sender,
       to: inquiry.email,
       replyTo: adminRecipient,
       subject: `Thank you for contacting Supplimed [Ref: ${inquiry.reference}]`,
-      html: buildCustomerEmailHtml(inquiry, settings)
+      text: buildCustomerEmailText(inquiry, settings),
+      html: buildCustomerEmailHtml(inquiry, settings),
+      headers: {
+        'X-Mailer': 'Supplimed-Mailer/1.0',
+        'X-Entity-Ref-ID': inquiry.reference
+      }
     };
 
     if (transporter) {
@@ -276,7 +349,7 @@ export const sendInquiryEmails = async ({ inquiry }) => {
         adminSent = true;
         console.log(`[Nodemailer] Admin notification sent successfully to ${adminRecipient} for ${inquiry.reference}`);
       } catch (adminErr) {
-        console.warn(`[Nodemailer Warning] Failed to send admin notification:`, adminErr?.message || adminErr);
+        console.error(`[Nodemailer Warning] Failed to send admin notification:`, adminErr?.message || adminErr);
       }
 
       try {
@@ -284,7 +357,7 @@ export const sendInquiryEmails = async ({ inquiry }) => {
         customerSent = true;
         console.log(`[Nodemailer] Customer acknowledgment sent successfully to ${inquiry.email} for ${inquiry.reference}`);
       } catch (customerErr) {
-        console.warn(`[Nodemailer Warning] Failed to send customer acknowledgment:`, customerErr?.message || customerErr);
+        console.error(`[Nodemailer Warning] Failed to send customer acknowledgment:`, customerErr?.message || customerErr);
       }
 
       return {
@@ -355,10 +428,33 @@ export const sendTestEmail = async ({ to, smtpConfig }) => {
   const fromEmail = smtpConfig.fromEmail || smtpConfig.user;
   const recipient = to || smtpConfig.user;
 
+  const textContent = `
+Hello Administrator,
+
+This is a live test email sent from Supplimed Management Panel to verify your custom SMTP and TLS mail configuration.
+
+Configuration Details:
+- SMTP Host: ${smtpConfig.host}
+- Port: ${port}
+- Security: ${isSecure ? 'SSL (Port 465)' : 'TLS / STARTTLS'}
+- Authenticated User: ${smtpConfig.user}
+- Sender Name: ${fromName}
+
+If you are reading this email, your mail credentials and TLS transport are 100% operational.
+All customer inquiries submitted on the website will be delivered to: ${recipient}.
+
+Sent At: ${new Date().toLocaleString()}
+Supplimed Management Panel
+`;
+
   const mailOptions = {
-    from: `"${fromName}" <${fromEmail}>`,
+    from: {
+      name: fromName,
+      address: fromEmail
+    },
     to: recipient,
     subject: `Supplimed SMTP & TLS Verification Test [${new Date().toLocaleTimeString()}]`,
+    text: textContent,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px;">
         <div style="background: #166534; padding: 20px; border-radius: 8px; color: #ffffff; text-align: center;">
@@ -381,7 +477,11 @@ export const sendTestEmail = async ({ to, smtpConfig }) => {
           Sent from Supplimed Management Panel
         </div>
       </div>
-    `
+    `,
+    headers: {
+      'X-Mailer': 'Supplimed-Mailer/1.0',
+      'X-Priority': '1 (Highest)'
+    }
   };
 
   const info = await transporter.sendMail(mailOptions);
@@ -390,4 +490,157 @@ export const sendTestEmail = async ({ to, smtpConfig }) => {
     messageId: info.messageId,
     recipient
   };
+};
+
+/**
+ * Sends a 6-digit verification OTP email for Password Reset
+ */
+export const sendOtpResetEmail = async ({ to, name, otp }) => {
+  try {
+    const settings = await Setting.findOne({ key: 'global_settings' }).lean().catch(() => null);
+    const brandName = settings?.websiteName || 'Supplimed';
+    const fromName = settings?.smtp?.fromName || brandName;
+    const fromEmail = settings?.smtp?.fromEmail || settings?.smtp?.user || config.email.from || 'support@supplimed.in';
+    const senderFrom = `"${fromName}" <${fromEmail}>`;
+
+    const transporter = await getTransporter(settings);
+
+    const otpText = `
+Hello ${name || 'Administrator'},
+
+A request was received to reset the password for your ${brandName} administrator account (${to}).
+
+Your 6-digit One-Time Password (OTP) is: ${otp}
+This OTP is valid for the next 15 minutes.
+
+If you did not request this, please ignore this email or contact security.
+
+Sincerely,
+${brandName} Portal Security
+`;
+
+    const mailOptions = {
+      from: {
+        name: fromName,
+        address: fromEmail
+      },
+      to,
+      subject: `${otp} is your ${brandName} Admin Password Reset OTP Code`,
+      text: otpText,
+      html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Supplimed Password Reset OTP</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px; color: #1e293b; }
+    .container { max-width: 540px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }
+    .header { background: #166534; padding: 28px 32px; color: #ffffff; text-align: center; }
+    .header h1 { margin: 0 0 4px 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+    .header p { margin: 0; font-size: 13px; opacity: 0.9; }
+    .body { padding: 32px; font-size: 14px; line-height: 1.6; color: #334155; }
+    .greeting { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
+    .otp-card { background: #f0fdf4; border: 2px dashed #86efac; border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center; }
+    .otp-code { font-size: 38px; font-weight: 900; letter-spacing: 8px; color: #166534; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; margin: 8px 0; text-indent: 8px; }
+    .otp-expiry { font-size: 12px; font-weight: 600; color: #15803d; }
+    .alert-box { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px; font-size: 12px; color: #92400e; margin-top: 20px; }
+    .footer { background: #f8fafc; border-top: 1px solid #f1f5f9; padding: 20px 32px; font-size: 11px; color: #94a3b8; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>${brandName} Portal Security</h1>
+      <p>Administrator Account Verification</p>
+    </div>
+    <div class="body">
+      <div class="greeting">Hello ${name || 'Administrator'},</div>
+      <p>
+        A request was received to reset the password for your <strong>${brandName}</strong> administrator account (${to}).
+      </p>
+      <p>Use the following 6-digit One-Time Password (OTP) to complete your password reset:</p>
+
+      <div class="otp-card">
+        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #166534; letter-spacing: 1px;">Verification OTP</div>
+        <div class="otp-code">${otp}</div>
+        <div class="otp-expiry">&#9200; Valid for the next 15 minutes</div>
+      </div>
+
+      <p>Enter this OTP in the admin login portal along with your new password to update your credentials.</p>
+
+      <div class="alert-box">
+        <strong>Security Notice:</strong> Never share this OTP with anyone. Supplimed staff will never ask for your password or verification codes. If you did not request this reset, your account is secure and you can safely ignore this email.
+      </div>
+    </div>
+    <div class="footer">
+      &copy; ${new Date().getFullYear()} ${brandName} Healthcare. ISO 13485:2016 Certified.<br/>
+      This is an automated system security notification.
+    </div>
+  </div>
+</body>
+</html>
+      `
+    };
+
+    if (transporter) {
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`[Nodemailer] OTP email sent successfully to ${to}. MessageId: ${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } else {
+      console.log(`\n================== [NODEMAILER OTP SIMULATION (DEV MODE)] ==================`);
+      console.log(`[TO]: ${to}`);
+      console.log(`[OTP CODE]: ${otp}`);
+      console.log(`[VALID FOR]: 15 minutes`);
+      console.log(`============================================================================\n`);
+      return { success: true, simulated: true, otp };
+    }
+  } catch (error) {
+    console.error('[Nodemailer Error] Failed to send OTP email:', error);
+    throw error;
+  }
+};
+
+/**
+ * Sends a confirmation email after successful Password Reset
+ */
+export const sendPasswordChangedConfirmationEmail = async ({ to, name }) => {
+  try {
+    const settings = await Setting.findOne({ key: 'global_settings' }).lean().catch(() => null);
+    const brandName = settings?.websiteName || 'Supplimed';
+    const fromName = settings?.smtp?.fromName || brandName;
+    const fromEmail = settings?.smtp?.fromEmail || settings?.smtp?.user || config.email.from || 'support@supplimed.in';
+
+    const transporter = await getTransporter(settings);
+
+    const mailOptions = {
+      from: `"${fromName}" <${fromEmail}>`,
+      to,
+      subject: `Your ${brandName} Admin Password Has Been Reset Successfully`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px;">
+          <div style="background: #166534; padding: 20px; border-radius: 8px; color: #ffffff; text-align: center;">
+            <h2 style="margin: 0;">Password Reset Complete</h2>
+            <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9;">${brandName} Administration</p>
+          </div>
+          <div style="padding: 24px 8px; color: #334155; font-size: 14px; line-height: 1.6;">
+            <p>Hello ${name || 'Administrator'},</p>
+            <p>The password for your Supplimed account (<strong>${to}</strong>) was successfully updated via OTP verification at <strong>${new Date().toLocaleString()}</strong>.</p>
+            <p>You can now sign in with your new password at the admin portal.</p>
+            <p style="margin-top: 24px; font-size: 12px; color: #64748b;">
+              If you did not perform this change, please contact technical support immediately at <a href="mailto:${fromEmail}">${fromEmail}</a>.
+            </p>
+          </div>
+        </div>
+      `
+    };
+
+    if (transporter) {
+      await transporter.sendMail(mailOptions);
+    }
+    return { success: true };
+  } catch (err) {
+    console.warn('[Mailer Notice] Failed to send password changed confirmation email:', err.message);
+    return { success: false, error: err.message };
+  }
 };

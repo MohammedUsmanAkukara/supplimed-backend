@@ -4,6 +4,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 
@@ -21,6 +22,7 @@ import inquiryRoutes from './routes/inquiryRoutes.js';
 import navigationRoutes from './routes/navigationRoutes.js';
 import settingRoutes from './routes/settingRoutes.js';
 import certificateRoutes from './routes/certificateRoutes.js';
+import brochureRoutes from './routes/brochureRoutes.js';
 import mediaRoutes from './routes/mediaRoutes.js';
 import { getPublicGalleryMedia } from './controllers/mediaController.js';
 import userRoutes from './routes/userRoutes.js';
@@ -73,9 +75,18 @@ if (config.nodeEnv !== 'test') {
   app.use(morgan('dev'));
 }
 
-// Serve persistent uploads statically
-const uploadsPath = path.resolve('public', 'uploads');
-app.use('/uploads', express.static(uploadsPath));
+// Serve persistent uploads statically (supports running from workspace root or server directory)
+const serverUploadsPath = path.join(__dirname, '..', 'public', 'uploads');
+const rootUploadsPath = path.resolve('public', 'uploads');
+
+if (!fs.existsSync(serverUploadsPath)) {
+  fs.mkdirSync(serverUploadsPath, { recursive: true });
+}
+app.use('/uploads', express.static(serverUploadsPath));
+
+if (path.resolve(serverUploadsPath) !== path.resolve(rootUploadsPath) && fs.existsSync(rootUploadsPath)) {
+  app.use('/uploads', express.static(rootUploadsPath));
+}
 
 // Dynamic Technical SEO routes at root
 app.use('/', seoRoutes);
@@ -122,6 +133,7 @@ app.use('/api/inquiries', inquiryRoutes);
 app.use('/api/navigation', navigationRoutes);
 app.use('/api/settings', settingRoutes);
 app.use('/api/certificates', certificateRoutes);
+app.use('/api/brochures', brochureRoutes);
 app.get('/api/media', getPublicGalleryMedia);
 app.use('/api/admin/media', mediaRoutes);
 app.use('/api/admin/users', userRoutes);

@@ -191,4 +191,87 @@ describe('Supplimed Public & Admin API Test Suite', () => {
     expect(res.body.stats.certificates).toBe(1);
     expect(res.body.stats.inquiries.new).toBe(1);
   });
+
+  // 12. Forgot Password and OTP verification
+  test('POST /api/auth/forgot-password should generate OTP for registered user', async () => {
+    const res = await request(app)
+      .post('/api/auth/forgot-password')
+      .send({ email: 'admin@supplimed.in' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+
+    const user = await User.findOne({ email: 'admin@supplimed.in' }).select('+resetPasswordOtp +resetPasswordExpire');
+    expect(user.resetPasswordOtp).toBeDefined();
+    expect(user.resetPasswordOtp.length).toBe(6);
+    expect(user.resetPasswordExpire).toBeDefined();
+  });
+
+  test('POST /api/auth/verify-reset-otp should reject invalid OTP', async () => {
+    const res = await request(app)
+      .post('/api/auth/verify-reset-otp')
+      .send({
+        email: 'admin@supplimed.in',
+        otp: '000000',
+        newPassword: 'BrandNewPassword2026!'
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
+
+  test('POST /api/auth/verify-reset-otp should reset password with valid OTP and allow login', async () => {
+    const user = await User.findOne({ email: 'admin@supplimed.in' }).select('+resetPasswordOtp');
+    const validOtp = user.resetPasswordOtp;
+
+    const res = await request(app)
+      .post('/api/auth/verify-reset-otp')
+      .send({
+        email: 'admin@supplimed.in',
+        otp: validOtp,
+        newPassword: 'BrandNewPassword2026!'
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+
+    // Verify login with new password
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({
+        email: 'admin@supplimed.in',
+        password: 'BrandNewPassword2026!'
+      });
+
+    expect(loginRes.status).toBe(200);
+    expect(loginRes.body.success).toBe(true);
+  });
+
+  // 13. Media Upload & Static Image Serving
+  test('POST /api/admin/media/upload should upload image and serve it via GET /uploads/:filename', async () => {
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({
+        email: 'admin@supplimed.in',
+        password: 'BrandNewPassword2026!'
+      });
+    const token = loginRes.body.token;
+
+    // Upload a test PNG buffer
+    const testPngBuffer = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+    const uploadRes = await request(app)
+      .post('/api/admin/media/upload')
+      .set('Authorization', `Bearer ${token}`)
+      .attach('file', testPngBuffer, 'test-pixel.png');
+
+    expect(uploadRes.status).toBe(201);
+    expect(uploadRes.body.success).toBe(true);
+    expect(uploadRes.body.media.url).toMatch(/^\/uploads\//);
+
+    // Verify the uploaded image is served statically with status 200 and image mime type
+    const imageUrl = uploadRes.body.media.url;
+    const fetchRes = await request(app).get(imageUrl);
+    expect(fetchRes.status).toBe(200);
+    expect(fetchRes.headers['content-type']).toMatch(/image/);
+  });
 });
