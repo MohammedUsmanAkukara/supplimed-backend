@@ -13,7 +13,7 @@ export const getPublicBrochures = async (req, res, next) => {
     const { category } = req.query;
     const query = { status: 'published' };
 
-    if (category && category !== 'All') {
+    if (category && category !== 'All' && category !== 'all' && category !== 'undefined' && category !== 'null') {
       query.category = category;
     }
 
