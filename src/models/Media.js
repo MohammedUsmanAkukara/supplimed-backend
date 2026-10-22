@@ -44,7 +44,15 @@ const mediaSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ['general', 'products', 'facilities', 'lab', 'certifications'],
+      enum: [
+        'general',
+        'products',
+        'facilities',
+        'lab',
+        'certifications',
+        'brochures',
+        'documents'
+      ],
       default: 'general',
       index: true
     },

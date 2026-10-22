@@ -47,6 +47,20 @@ export const saveBufferAsMedia = async ({
     ext
   });
 
+  const validCategories = [
+    'general',
+    'products',
+    'facilities',
+    'lab',
+    'certifications',
+    'brochures',
+    'documents'
+  ];
+  const normalizedCategory =
+    category && typeof category === 'string' && validCategories.includes(category.toLowerCase().trim())
+      ? category.toLowerCase().trim()
+      : 'general';
+
   const media = await Media.create({
     originalName: safeOriginalName,
     storageKey: result.storageKey,
@@ -60,7 +74,7 @@ export const saveBufferAsMedia = async ({
     },
     altText: altText || safeOriginalName.split('.')[0],
     caption: caption || '',
-    category: category || 'general',
+    category: normalizedCategory,
     uploadedBy: userId || null
   });
 
@@ -321,7 +335,21 @@ export const updateMediaAlt = async (req, res, next) => {
 
     const updates = {};
     if (altText !== undefined) updates.altText = altText;
-    if (category !== undefined) updates.category = category;
+    if (category !== undefined) {
+      const validCategories = [
+        'general',
+        'products',
+        'facilities',
+        'lab',
+        'certifications',
+        'brochures',
+        'documents'
+      ];
+      updates.category =
+        category && typeof category === 'string' && validCategories.includes(category.toLowerCase().trim())
+          ? category.toLowerCase().trim()
+          : 'general';
+    }
     if (caption !== undefined) updates.caption = caption;
 
     const media = await Media.findByIdAndUpdate(id, updates, { new: true });
