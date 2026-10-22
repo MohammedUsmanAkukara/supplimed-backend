@@ -165,3 +165,27 @@ export const reorderNavigationItems = async (req, res, next) => {
     next(error);
   }
 };
+
+// Admin: Bulk delete navigation items
+export const bulkDeleteNavigationItems = async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'No navigation item IDs provided.' });
+    }
+    const result = await Navigation.deleteMany({ _id: { $in: ids } });
+    await logAuditAction({
+      req,
+      action: 'NAV_ITEMS_BULK_DELETED',
+      targetType: 'Navigation',
+      details: { count: result.deletedCount, ids }
+    });
+    res.status(200).json({
+      success: true,
+      message: `Deleted ${result.deletedCount} navigation item(s) successfully.`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    next(error);
+  }
+};

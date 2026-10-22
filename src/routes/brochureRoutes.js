@@ -7,7 +7,8 @@ import {
   getAdminBrochureById,
   createBrochure,
   updateBrochure,
-  deleteBrochure
+  deleteBrochure,
+  bulkDeleteBrochures
 } from '../controllers/brochureController.js';
 import { requireAuth, requireRole } from '../middlewares/auth.js';
 
@@ -45,6 +46,7 @@ router.patch(
   uploadFields,
   updateBrochure
 );
+router.post('/admin/bulk-delete', requireAuth, requireRole('SUPER_ADMIN', 'ADMIN'), bulkDeleteBrochures);
 router.delete(
   '/admin/:id',
   requireAuth,

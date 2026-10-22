@@ -39,6 +39,14 @@ export const createUser = async (req, res, next) => {
       });
     }
 
+    // Restrict regular ADMIN from creating SUPER_ADMIN
+    if (role === 'SUPER_ADMIN' && req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only Super Administrators can create or assign the Super Admin role.'
+      });
+    }
+
     const user = await User.create({
       name,
       email: email.toLowerCase(),
@@ -74,6 +82,20 @@ export const updateUser = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: 'User not found.'
+      });
+    }
+
+    // Protect against non-super-admins modifying or promoting to SUPER_ADMIN
+    if (user.role === 'SUPER_ADMIN' && req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only Super Administrators can modify a Super Administrator account.'
+      });
+    }
+    if (role === 'SUPER_ADMIN' && req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only Super Administrators can promote users to Super Admin.'
       });
     }
 
@@ -129,7 +151,6 @@ export const deleteUser = async (req, res, next) => {
       });
     }
 
-    const superAdminCount = await User.countDocuments({ role: 'SUPER_ADMIN' });
     const target = await User.findById(id);
 
     if (!target) {
@@ -139,6 +160,15 @@ export const deleteUser = async (req, res, next) => {
       });
     }
 
+    // Protect against non-super-admins deleting a SUPER_ADMIN
+    if (target.role === 'SUPER_ADMIN' && req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only Super Administrators can delete a Super Administrator.'
+      });
+    }
+
+    const superAdminCount = await User.countDocuments({ role: 'SUPER_ADMIN' });
     if (target.role === 'SUPER_ADMIN' && superAdminCount <= 1) {
       return res.status(400).json({
         success: false,
@@ -159,6 +189,51 @@ export const deleteUser = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'User deleted successfully.'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const bulkDeleteUsers = async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'No IDs provided' });
+    }
+
+    // Never delete oneself
+    const safeIds = ids.filter(id => String(id) !== String(req.user._id));
+
+    // If caller is not SUPER_ADMIN, exclude any SUPER_ADMIN user
+    let filter = { _id: { $in: safeIds } };
+    if (req.user.role !== 'SUPER_ADMIN') {
+      filter.role = { $ne: 'SUPER_ADMIN' };
+    } else {
+      // Don't delete the last super admin
+      const deletingSuperAdmins = await User.countDocuments({ _id: { $in: safeIds }, role: 'SUPER_ADMIN' });
+      const totalSuperAdmins = await User.countDocuments({ role: 'SUPER_ADMIN' });
+      if (totalSuperAdmins - deletingSuperAdmins < 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Operation would delete all Super Administrators. At least one must remain.'
+        });
+      }
+    }
+
+    const result = await User.deleteMany(filter);
+
+    await logAuditAction({
+      req,
+      action: 'USERS_BULK_DELETED',
+      targetType: 'User',
+      details: { requestedCount: ids.length, deletedCount: result.deletedCount }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Deleted ${result.deletedCount} user(s).`,
+      deletedCount: result.deletedCount
     });
   } catch (error) {
     next(error);

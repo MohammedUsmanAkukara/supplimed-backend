@@ -5,7 +5,8 @@ import {
   getAdminPageById,
   createPage,
   updatePage,
-  deletePage
+  deletePage,
+  bulkDeletePages
 } from '../controllers/pageController.js';
 import { requireAuth, requireRole } from '../middlewares/auth.js';
 
@@ -16,6 +17,7 @@ router.get('/:slug', getPageBySlug);
 
 // Admin routes
 router.get('/admin/all', requireAuth, getAdminPages);
+router.post('/admin/bulk-delete', requireAuth, requireRole('SUPER_ADMIN', 'ADMIN'), bulkDeletePages);
 router.get('/admin/:id', requireAuth, getAdminPageById);
 router.post('/admin', requireAuth, requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), createPage);
 router.patch('/admin/:id', requireAuth, requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), updatePage);

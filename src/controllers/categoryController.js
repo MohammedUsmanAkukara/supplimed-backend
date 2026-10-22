@@ -208,3 +208,27 @@ export const deleteCategory = async (req, res, next) => {
     next(error);
   }
 };
+
+// Admin: Bulk delete categories
+export const bulkDeleteCategories = async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'No category IDs provided.' });
+    }
+    const result = await Category.deleteMany({ _id: { $in: ids } });
+    await logAuditAction({
+      req,
+      action: 'CATEGORIES_BULK_DELETED',
+      targetType: 'Category',
+      details: { count: result.deletedCount, ids }
+    });
+    res.status(200).json({
+      success: true,
+      message: `Deleted ${result.deletedCount} category/categories successfully.`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    next(error);
+  }
+};

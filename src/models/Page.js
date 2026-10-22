@@ -19,7 +19,7 @@ const pageSchema = new mongoose.Schema(
     },
     pageType: {
       type: String,
-      enum: ['home', 'about', 'contact', 'products', 'custom'],
+      enum: ['home', 'about', 'contact', 'products', 'brochures', 'certificates', 'gallery', 'custom'],
       default: 'custom',
       index: true
     },

@@ -7,7 +7,8 @@ import {
   getAdminProductById,
   createProduct,
   updateProduct,
-  deleteProduct
+  deleteProduct,
+  bulkDeleteProducts
 } from '../controllers/productController.js';
 import { requireAuth, requireRole } from '../middlewares/auth.js';
 
@@ -20,6 +21,7 @@ router.get('/:slug', getProductBySlug);
 
 // Admin routes
 router.get('/admin/all', requireAuth, getAdminProducts);
+router.post('/admin/bulk-delete', requireAuth, requireRole('SUPER_ADMIN', 'ADMIN'), bulkDeleteProducts);
 router.get('/admin/:id', requireAuth, getAdminProductById);
 router.post('/admin', requireAuth, requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), createProduct);
 router.patch('/admin/:id', requireAuth, requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), updateProduct);

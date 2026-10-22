@@ -221,3 +221,27 @@ export const deleteAdminInquiry = async (req, res, next) => {
     next(error);
   }
 };
+
+// Admin: Bulk delete inquiries
+export const bulkDeleteInquiries = async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'No inquiry IDs provided.' });
+    }
+    const result = await Inquiry.deleteMany({ _id: { $in: ids } });
+    await logAuditAction({
+      req,
+      action: 'INQUIRIES_BULK_DELETED',
+      targetType: 'Inquiry',
+      details: { count: result.deletedCount, ids }
+    });
+    res.status(200).json({
+      success: true,
+      message: `Deleted ${result.deletedCount} inquiry/inquiries successfully.`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    next(error);
+  }
+};

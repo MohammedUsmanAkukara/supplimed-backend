@@ -401,3 +401,27 @@ export const deleteProduct = async (req, res, next) => {
     next(error);
   }
 };
+
+// Admin: Bulk delete products
+export const bulkDeleteProducts = async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'No product IDs provided.' });
+    }
+    const result = await Product.deleteMany({ _id: { $in: ids } });
+    await logAuditAction({
+      req,
+      action: 'PRODUCTS_BULK_DELETED',
+      targetType: 'Product',
+      details: { count: result.deletedCount, ids }
+    });
+    res.status(200).json({
+      success: true,
+      message: `Deleted ${result.deletedCount} product(s) successfully.`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    next(error);
+  }
+};

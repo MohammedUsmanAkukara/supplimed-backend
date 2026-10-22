@@ -39,4 +39,21 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+router.post('/bulk-delete', requireRole('SUPER_ADMIN'), async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'No audit log IDs provided.' });
+    }
+    const result = await AuditLog.deleteMany({ _id: { $in: ids } });
+    res.status(200).json({
+      success: true,
+      message: `Deleted ${result.deletedCount} audit log(s).`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

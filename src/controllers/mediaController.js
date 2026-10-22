@@ -409,3 +409,38 @@ export const deleteMedia = async (req, res, next) => {
     next(error);
   }
 };
+
+// Admin: Bulk delete media
+export const bulkDeleteMedia = async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'No media IDs provided.' });
+    }
+
+    const items = await Media.find({ _id: { $in: ids } });
+    for (const m of items) {
+      try {
+        await deleteMediaAsset(m.storageKey, m.provider);
+      } catch (err) {
+        // Continue
+      }
+    }
+
+    const result = await Media.deleteMany({ _id: { $in: ids } });
+    await logAuditAction({
+      req,
+      action: 'MEDIA_BULK_DELETED',
+      targetType: 'Media',
+      details: { count: result.deletedCount, ids }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Deleted ${result.deletedCount} media asset(s) successfully.`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -5,7 +5,8 @@ import {
   getAdminCertificateById,
   createCertificate,
   updateCertificate,
-  deleteCertificate
+  deleteCertificate,
+  bulkDeleteCertificates
 } from '../controllers/certificateController.js';
 import { requireAuth, requireRole } from '../middlewares/auth.js';
 
@@ -16,6 +17,7 @@ router.get('/', getPublicCertificates);
 
 // Admin routes
 router.get('/admin/all', requireAuth, getAdminCertificates);
+router.post('/admin/bulk-delete', requireAuth, requireRole('SUPER_ADMIN', 'ADMIN'), bulkDeleteCertificates);
 router.get('/admin/:id', requireAuth, getAdminCertificateById);
 router.post('/admin', requireAuth, requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), createCertificate);
 router.patch('/admin/:id', requireAuth, requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), updateCertificate);

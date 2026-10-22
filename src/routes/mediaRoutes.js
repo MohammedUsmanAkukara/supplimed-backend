@@ -6,7 +6,8 @@ import {
   getMediaList,
   getPublicGalleryMedia,
   updateMediaAlt,
-  deleteMedia
+  deleteMedia,
+  bulkDeleteMedia
 } from '../controllers/mediaController.js';
 import { requireAuth, requireRole } from '../middlewares/auth.js';
 
@@ -24,6 +25,7 @@ router.get('/public', getPublicGalleryMedia);
 router.use(requireAuth);
 
 router.get('/', getMediaList);
+router.post('/bulk-delete', requireRole('SUPER_ADMIN', 'ADMIN'), bulkDeleteMedia);
 
 // Flexible Multer file upload (accepts any file field name like 'file', 'files', 'image')
 router.post(

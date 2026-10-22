@@ -28,6 +28,7 @@ import { getPublicGalleryMedia } from './controllers/mediaController.js';
 import userRoutes from './routes/userRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
+import databaseRoutes from './routes/databaseRoutes.js';
 import seoRoutes from './routes/seoRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -139,6 +140,7 @@ app.use('/api/admin/media', mediaRoutes);
 app.use('/api/admin/users', userRoutes);
 app.use('/api/admin/dashboard', dashboardRoutes);
 app.use('/api/admin/audit-logs', auditRoutes);
+app.use('/api/admin/database', databaseRoutes);
 
 // 404 handler for unknown API routes
 app.use('/api/*', (req, res) => {

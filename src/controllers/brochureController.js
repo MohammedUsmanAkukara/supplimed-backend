@@ -4,165 +4,11 @@ import { saveBufferAsMedia } from './mediaController.js';
 import path from 'path';
 
 // Initial default brochures data for seeding if empty
-export const defaultBrochuresSeed = [
-  {
-    title: 'Supplimed Comprehensive Medical & Diagnostic Product Catalogue',
-    subtitle: 'Full 2026 Portfolio: Vacuum Blood Collection, Lab-ware & Cold-Chain Logistics',
-    category: 'Master Catalogue',
-    pages: 48,
-    fileSize: '4.8 MB',
-    format: 'PDF',
-    fileUrl: '/images/hero-lab.jpg', // Default accessible URL until PDF is uploaded
-    coverImage: '/images/hero-lab.jpg',
-    featured: true,
-    status: 'published',
-    displayOrder: 1,
-    description:
-      'The comprehensive master catalogue detailing Supplimed’s complete diagnostic medical device range, automated ISO 13485 manufacturing lines, raw material grades, packaging dimensions, and worldwide ordering codes.',
-    highlights: [
-      'Complete Vacuum Blood Collection Tube specifications (K2/K3 EDTA, Clot Activator, Fluoride Oxalate, Gel Separator)',
-      'Clinical Labware: Graduated centrifuge tubes (15ml & 50ml), urine containers, cryo vials',
-      'Phase-change cold-chain transport solutions (Hemo Porter™ 2-8°C)',
-      'Cleanroom production protocols and ISO 13485:2016 compliance standards'
-    ],
-    tableOfContents: [
-      'Section 1: Corporate Profile & World-Class Cleanroom Facilities',
-      'Section 2: Vacuum Blood Collection Tubes (HemoVac Plus™)',
-      'Section 3: Specimen Transport & Temperature-Controlled Coolers',
-      'Section 4: Precision Plasticware & Centrifuge Systems',
-      'Section 5: Quality Assurance Protocols, Traceability & Certifications',
-      'Section 6: Ordering Information, SKUs, and Custom OEM Manufacturing'
-    ]
-  },
-  {
-    title: 'HemoVac Plus™ Vacuum Blood Collection Tubes Technical Guide',
-    subtitle: 'Clinical Phlebotomy Protocols, Draw Volumes & Inversion Standards',
-    category: 'Blood Collection',
-    pages: 20,
-    fileSize: '3.2 MB',
-    format: 'PDF',
-    fileUrl: '/images/tubes.jpg',
-    coverImage: '/images/tubes.jpg',
-    featured: true,
-    status: 'published',
-    displayOrder: 2,
-    description:
-      'An exhaustive technical guide for laboratory directors and phlebotomists. Contains international color coding chart, draw volumes (1ml to 10ml), ultrasonic additive spray dispersion data, and centrifugation recommendations.',
-    highlights: [
-      'Detailed Inversion Protocol Matrix (EDTA: 8-10x, Clot Activator: 5-8x, Fluoride: 8-10x)',
-      'Precision spray-coated additives avoiding sample dilution',
-      'Medical-grade PET with low gas-permeation ensuring 18-month vacuum retention',
-      'Compatibility with major automated clinical chemistry & hematology analyzers'
-    ],
-    tableOfContents: [
-      '1. Overview of HemoVac Plus™ Engineering',
-      '2. Additive Chemistry & Biochemical Mechanisms',
-      '3. Color Coding Guide & International Cap Standards',
-      '4. Draw Volume Accuracy & Vacuum Calibration',
-      '5. Specimen Handling & Centrifugation RPM Chart',
-      '6. Clinical Validation Reports & Interferences Study'
-    ]
-  },
-  {
-    title: 'Clinical Laboratory Plasticware & Centrifuge Labware Brochure',
-    subtitle: 'High-G Centrifuge Conical Tubes, Specimen Containers & Liquid Handling',
-    category: 'General Labware',
-    pages: 16,
-    fileSize: '2.6 MB',
-    format: 'PDF',
-    fileUrl: '/images/centrifuge.jpg',
-    coverImage: '/images/centrifuge.jpg',
-    featured: false,
-    status: 'published',
-    displayOrder: 3,
-    description:
-      'Engineered for maximum durability in high-speed clinical centrifuges. Highlights sterile polypropylene graduated 15ml & 50ml centrifuge tubes capable of withstanding up to 12,000 RCF, urine containers, and micro-tips.',
-    highlights: [
-      'Withstands high-velocity centrifugation up to 12,000 RCF without micro-cracking',
-      'Leak-proof HDPE flat screw-caps with tight sealing ring',
-      'Silk-screen white graduations with high-contrast writing windows',
-      'Autoclavable at 121°C and freezable down to -80°C'
-    ],
-    tableOfContents: [
-      '1. Materials Science: Ultra-Clear Polypropylene Resins',
-      '2. 15ml & 50ml Conical Centrifuge Tubes',
-      '3. Sterile & Non-Sterile Urine Collection Containers',
-      '4. Cryovials & Microcentrifuge Tubes (0.5ml, 1.5ml, 2.0ml)',
-      '5. Chemical Compatibility & Thermal Tolerance Tables'
-    ]
-  },
-  {
-    title: 'Hemo Porter™ Specimen Cold-Chain Transport System Technical Guide',
-    subtitle: 'Diagnostic Specimen Logistics & Temperature Stability (2-8°C)',
-    category: 'Cold Chain Logistics',
-    pages: 12,
-    fileSize: '2.1 MB',
-    format: 'PDF',
-    fileUrl: '/images/hemo-porter.jpg',
-    coverImage: '/images/hemo-porter.jpg',
-    featured: false,
-    status: 'published',
-    displayOrder: 4,
-    description:
-      'Complete thermal performance documentation for diagnostic specimen transport boxes. Demonstrates temperature retention curves during summer ambient conditions using high-density polyurethane and phase-change cool packs.',
-    highlights: [
-      'Guaranteed 2-8°C temperature maintenance up to 24 hours under 43°C ambient',
-      'Drop-tested high-density outer shell with impact shock protection',
-      'Custom sample tube racks preventing vial breakage or caps loosening',
-      'Integrated external digital temperature indicator with max/min memory'
-    ],
-    tableOfContents: [
-      '1. Introduction to Safe Biological Sample Logistics',
-      '2. Thermal Insulation Engineering & Foam Density Specs',
-      '3. Phase-Change Coolant Pack Pre-conditioning Guidelines',
-      '4. Real-World Ambient Stress Test Graphs (24h to 48h)',
-      '5. Cleaning, Disinfection & Maintenance Protocols'
-    ]
-  },
-  {
-    title: 'Manufacturing Excellence & Regulatory Compliance Portfolio',
-    subtitle: 'ISO 13485:2016, ISO 9001:2015 & CDSCO Regulatory Dossier',
-    category: 'Quality & Regulatory',
-    pages: 14,
-    fileSize: '1.9 MB',
-    format: 'PDF',
-    fileUrl: '/images/cleanroom.jpg',
-    coverImage: '/images/cleanroom.jpg',
-    featured: false,
-    status: 'published',
-    displayOrder: 5,
-    description:
-      'The complete quality assurance dossier for hospital procurement committees, NABH/NABL accredited diagnostic labs, and international medical device importers verifying our manufacturing compliance.',
-    highlights: [
-      'ISO 13485:2016 Medical Devices Quality Management System scope and certificate',
-      'ISO 9001:2015 Quality Management System documentation',
-      'Central Drugs Standard Control Organisation (CDSCO) manufacturing licenses',
-      'Lot-to-lot bioburden testing, sterility assurance, and pneumatic leak validation'
-    ],
-    tableOfContents: [
-      '1. Quality Policy & Corporate Vision',
-      '2. ISO 13485:2016 & ISO 9001:2015 Certification Copies',
-      '3. Class 100,000 Cleanroom Operational Protocols',
-      '4. In-Process Quality Controls (IPQC) & Final QC Clearance',
-      '5. Biological Safety & Pyrogen Testing Standards'
-    ]
-  }
-];
-
-// Helper to auto-seed if collection is empty
-const ensureBrochuresSeeded = async () => {
-  const count = await Brochure.countDocuments();
-  if (count === 0) {
-    for (const item of defaultBrochuresSeed) {
-      await Brochure.create(item);
-    }
-  }
-};
+export const defaultBrochuresSeed = [];
 
 // Public: Get all published brochures
 export const getPublicBrochures = async (req, res, next) => {
   try {
-    await ensureBrochuresSeeded();
 
     const { category } = req.query;
     const query = { status: 'published' };
@@ -216,8 +62,6 @@ export const trackBrochureDownload = async (req, res, next) => {
 // Admin: Get all brochures with pagination & filters
 export const getAdminBrochures = async (req, res, next) => {
   try {
-    await ensureBrochuresSeeded();
-
     const { search, category, status, page = 1, limit = 20 } = req.query;
     const query = {};
 
@@ -554,6 +398,30 @@ export const deleteBrochure = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Brochure deleted successfully.'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Admin: Bulk delete brochures
+export const bulkDeleteBrochures = async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'No brochure IDs provided.' });
+    }
+    const result = await Brochure.deleteMany({ _id: { $in: ids } });
+    await logAuditAction({
+      req,
+      action: 'BROCHURES_BULK_DELETED',
+      targetType: 'Brochure',
+      details: { count: result.deletedCount, ids }
+    });
+    res.status(200).json({
+      success: true,
+      message: `Deleted ${result.deletedCount} brochure(s) successfully.`,
+      deletedCount: result.deletedCount
     });
   } catch (error) {
     next(error);

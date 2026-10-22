@@ -48,20 +48,87 @@ export const DEFAULT_ABOUT_PAGE_DATA = {
   }
 };
 
+export const DEFAULT_BROCHURES_PAGE_DATA = {
+  title: 'Official Product Catalogues & Brochures',
+  heroHeading: 'Supplimed Product Brochures & Catalogues',
+  heroDescription:
+    'Access certified product specifications, color-coding protocols, draw volume tables, and clinical labware literature. Download instant digital copies or request printed copies for your facility.',
+  heroImage: '',
+  callToActionText: 'Request Printed Catalogue',
+  callToActionUrl: '#request-printed',
+  seoTitle: 'Official Product Catalogues & Technical Brochures | Supplimed',
+  seoDescription:
+    'Download Supplimed official product brochures, vacuum blood collection tube technical guides, and ISO 13485 manufacturing compliance portfolios.',
+  sections: {
+    tagline: 'Official Technical Literature',
+    metric1_value: '5+',
+    metric1_label: 'Official Catalogues',
+    metric2_value: 'ISO 13485',
+    metric2_label: 'Certified Portfolio',
+    metric3_value: '100% Free',
+    metric3_label: 'Instant Download',
+    metric4_value: 'Global',
+    metric4_label: 'Distributor Access'
+  }
+};
+
+export const DEFAULT_CERTIFICATES_PAGE_DATA = {
+  title: 'Quality & Regulatory Certificates',
+  heroHeading: 'Quality Assurance & Regulatory Accreditations',
+  heroDescription:
+    'Every vacuum blood collection tube, specimen container, and diagnostic device from Supplimed is manufactured under strict ISO 13485:2016 and CDSCO quality standards.',
+  heroImage: '',
+  callToActionText: 'Verify Certification',
+  callToActionUrl: '#certificates-list',
+  seoTitle: 'Quality & Regulatory Certificates | ISO 13485:2016 Certified Medical Devices',
+  seoDescription:
+    'Explore Supplimed\'s ISO 13485:2016, ISO 9001:2015, CDSCO, and CE certifications ensuring clinical safety and diagnostic precision.',
+  sections: {
+    tagline: 'Certified Medical Manufacturing',
+    stat1_value: 'ISO 13485',
+    stat1_label: 'Medical Device QMS',
+    stat2_value: 'ISO 9001',
+    stat2_label: 'Quality Systems',
+    stat3_value: 'CDSCO',
+    stat3_label: 'Govt. Manufacturing MD-5',
+    stat4_value: 'Class 100k',
+    stat4_label: 'Cleanroom Standard',
+    qualityPledge:
+      'Complete Certificate of Analysis (COA) for endotoxin limits, sterility assurance (SAL 10⁻⁶), and chemical assay provided with every hospital shipment.'
+  }
+};
+
 // Public: Get page by slug
 export const getPageBySlug = async (req, res, next) => {
   try {
+    let slug = req.params.slug;
+    if (slug === 'brochure') slug = 'brochures';
+
     let page = await Page.findOne({
-      slug: req.params.slug,
+      slug: { $in: [slug, req.params.slug] },
       status: 'published'
     }).lean();
 
     if (!page) {
-      if (req.params.slug === 'about') {
+      if (slug === 'about') {
         page = {
           slug: 'about',
           pageType: 'about',
           ...DEFAULT_ABOUT_PAGE_DATA,
+          status: 'published'
+        };
+      } else if (slug === 'brochures') {
+        page = {
+          slug: 'brochures',
+          pageType: 'brochures',
+          ...DEFAULT_BROCHURES_PAGE_DATA,
+          status: 'published'
+        };
+      } else if (slug === 'certificates') {
+        page = {
+          slug: 'certificates',
+          pageType: 'certificates',
+          ...DEFAULT_CERTIFICATES_PAGE_DATA,
           status: 'published'
         };
       } else {
@@ -77,6 +144,26 @@ export const getPageBySlug = async (req, res, next) => {
         heroDescription: page.heroDescription || DEFAULT_ABOUT_PAGE_DATA.heroDescription,
         sections: {
           ...DEFAULT_ABOUT_PAGE_DATA.sections,
+          ...(page.sections || {})
+        }
+      };
+    } else if (page.slug === 'brochures' || page.slug === 'brochure') {
+      page = {
+        ...page,
+        heroHeading: page.heroHeading || DEFAULT_BROCHURES_PAGE_DATA.heroHeading,
+        heroDescription: page.heroDescription || DEFAULT_BROCHURES_PAGE_DATA.heroDescription,
+        sections: {
+          ...DEFAULT_BROCHURES_PAGE_DATA.sections,
+          ...(page.sections || {})
+        }
+      };
+    } else if (page.slug === 'certificates') {
+      page = {
+        ...page,
+        heroHeading: page.heroHeading || DEFAULT_CERTIFICATES_PAGE_DATA.heroHeading,
+        heroDescription: page.heroDescription || DEFAULT_CERTIFICATES_PAGE_DATA.heroDescription,
+        sections: {
+          ...DEFAULT_CERTIFICATES_PAGE_DATA.sections,
           ...(page.sections || {})
         }
       };
@@ -122,6 +209,34 @@ export const getAdminPageById = async (req, res, next) => {
       pageObj.heroDescription = pageObj.heroDescription || DEFAULT_ABOUT_PAGE_DATA.heroDescription;
       pageObj.sections = {
         ...DEFAULT_ABOUT_PAGE_DATA.sections,
+        ...(pageObj.sections || {})
+      };
+      return res.status(200).json({
+        success: true,
+        page: pageObj
+      });
+    }
+
+    if (page.slug === 'brochures' || page.slug === 'brochure') {
+      const pageObj = page.toObject();
+      pageObj.heroHeading = pageObj.heroHeading || DEFAULT_BROCHURES_PAGE_DATA.heroHeading;
+      pageObj.heroDescription = pageObj.heroDescription || DEFAULT_BROCHURES_PAGE_DATA.heroDescription;
+      pageObj.sections = {
+        ...DEFAULT_BROCHURES_PAGE_DATA.sections,
+        ...(pageObj.sections || {})
+      };
+      return res.status(200).json({
+        success: true,
+        page: pageObj
+      });
+    }
+
+    if (page.slug === 'certificates') {
+      const pageObj = page.toObject();
+      pageObj.heroHeading = pageObj.heroHeading || DEFAULT_CERTIFICATES_PAGE_DATA.heroHeading;
+      pageObj.heroDescription = pageObj.heroDescription || DEFAULT_CERTIFICATES_PAGE_DATA.heroDescription;
+      pageObj.sections = {
+        ...DEFAULT_CERTIFICATES_PAGE_DATA.sections,
         ...(pageObj.sections || {})
       };
       return res.status(200).json({
@@ -282,7 +397,7 @@ export const deletePage = async (req, res, next) => {
     }
 
     // Protect core system pages
-    if (['home', 'about', 'contact', 'products'].includes(page.slug)) {
+    if (['home', 'about', 'contact', 'products', 'brochures', 'certificates'].includes(page.slug)) {
       return res.status(400).json({
         success: false,
         message: `Core system page "${page.slug}" cannot be deleted. You may edit or change its status to draft instead.`
@@ -302,6 +417,37 @@ export const deletePage = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Page deleted successfully.'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Admin: Bulk delete pages (preserves core pages)
+export const bulkDeletePages = async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'No page IDs provided.' });
+    }
+
+    const coreSlugs = ['home', 'about', 'contact', 'products', 'brochures', 'certificates'];
+    const result = await Page.deleteMany({
+      _id: { $in: ids },
+      slug: { $nin: coreSlugs }
+    });
+
+    await logAuditAction({
+      req,
+      action: 'PAGES_BULK_DELETED',
+      targetType: 'Page',
+      details: { count: result.deletedCount, ids }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Deleted ${result.deletedCount} custom page(s). Core pages are protected and preserved.`,
+      deletedCount: result.deletedCount
     });
   } catch (error) {
     next(error);
