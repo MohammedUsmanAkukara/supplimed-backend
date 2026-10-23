@@ -381,10 +381,10 @@ export async function seedInitialData() {
         themeColor: '#A3C065',
         contactEmail: 'sales@supplimed.in',
         contactPhone: '+91 (123) 456-7890',
-        address: 'MB Plastic Industries, B75, Sector 83, Noida, UP 201305 INDIA',
-        defaultSeoTitle: 'Supplimed | Precision Diagnostic Equipment & Laboratory Consumables',
-        defaultMetaDescription: 'Supplimed provides world-class diagnostic equipment, vacuum blood collection tubes, and modern lab wares with ISO certification.',
-        defaultKeywords: 'diagnostic equipment, vacuum tubes, blood collection tubes, hemo porter, lab wares, supplimed'
+        address: 'Pune, Maharashtra & Noida, India',
+        defaultSeoTitle: 'Supplimed | Diagnostic Products & Medical Equipment Supplier in Pune',
+        defaultMetaDescription: 'Find ISO-certified diagnostic products, vacuum blood collection tubes, sample transport coolers, and pathology lab supplies in Pune. Certified manufacturer and medical supplier across Pune, Maharashtra.',
+        defaultKeywords: 'diagnostic products Pune, medical equipment supplier Pune, vacuum blood collection tubes Pune, pathology lab supplies Pune, laboratory consumables Pune Maharashtra, blood collection tubes dealer Pune, HemoVac Pune, hospital supplies Pune, supplimed'
       });
       console.log('[Seed] Created default global settings');
     }

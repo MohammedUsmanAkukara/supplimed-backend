@@ -41,15 +41,15 @@ const settingSchema = new mongoose.Schema(
     },
     defaultSeoTitle: {
       type: String,
-      default: 'Supplimed | Precision Diagnostic Equipment & Laboratory Consumables'
+      default: 'Supplimed | Diagnostic Products & Medical Equipment Supplier in Pune'
     },
     defaultMetaDescription: {
       type: String,
-      default: 'Supplimed is an ISO-certified manufacturer of high-precision diagnostic equipment, Vacuum Blood Collection Tubes, Sample Transport Coolers, and general lab-wares.'
+      default: 'Find ISO-certified diagnostic products, vacuum blood collection tubes, sample transport coolers, and pathology lab supplies in Pune. Certified manufacturer and medical supplier across Pune, Maharashtra.'
     },
     defaultKeywords: {
       type: String,
-      default: 'diagnostic equipment, vacuum tubes, blood collection tubes, hemo porter, lab wares, ISO 13485, supplimed'
+      default: 'diagnostic products Pune, medical equipment supplier Pune, vacuum blood collection tubes Pune, pathology lab supplies Pune, laboratory consumables Pune Maharashtra, blood collection tubes dealer Pune, HemoVac Pune, hospital supplies Pune, supplimed'
     },
     defaultOgImage: {
       type: String,
