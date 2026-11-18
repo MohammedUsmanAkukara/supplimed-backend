@@ -9,6 +9,57 @@ try {
 }
 
 /**
+ * Creates a configured Nodemailer transporter with timeout protection,
+ * IPv4 enforcement (family: 4) to eliminate intermittent IPv6 stalls,
+ * and robust socket settings.
+ */
+export const createSmtpTransport = ({ host, port, secure, user, pass, requireTls = true }) => {
+  if (!nodemailer) return null;
+  const p = Number(port) || 465;
+  const isSecure = Boolean(secure) || p === 465;
+
+  return nodemailer.createTransport({
+    host: host.trim(),
+    port: p,
+    secure: isSecure,
+    family: 4, // Force IPv4 to prevent intermittent IPv6 DNS stall / ETIMEDOUT
+    connectionTimeout: 20000, // 20s connection timeout
+    greetingTimeout: 20000,   // 20s greeting timeout
+    socketTimeout: 30000,     // 30s socket inactivity timeout
+    auth: {
+      user: user.trim(),
+      pass: pass ? pass.trim() : ''
+    },
+    tls: {
+      rejectUnauthorized: false
+    },
+    requireTLS: isSecure ? false : (requireTls !== false)
+  });
+};
+
+/**
+ * Helper to execute sendMail with automatic retry on transient socket/connection timeouts.
+ */
+export const sendMailWithRetry = async (transporter, mailOptions, maxRetries = 2) => {
+  let lastErr;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await transporter.sendMail(mailOptions);
+    } catch (err) {
+      lastErr = err;
+      const isTimeout = /timeout|econnreset|etimedout/i.test(err?.message || '');
+      if (isTimeout && attempt < maxRetries) {
+        console.warn(`[Mailer Notice] Email attempt ${attempt} hit timeout ("${err.message}"). Retrying in 1.5s...`);
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr;
+};
+
+/**
  * Creates and returns the active Nodemailer transporter.
  * Prioritizes dynamic credentials stored in MongoDB Settings (configured via Admin Panel),
  * then falls back to environment variables in config.email, and lastly null (simulation).
@@ -31,21 +82,13 @@ export const getTransporter = async (passedSettings = null) => {
   // 2. Check if dynamic SMTP is configured in Admin Panel
   const dynamicSmtp = settings?.smtp;
   if (dynamicSmtp && dynamicSmtp.host && dynamicSmtp.user && dynamicSmtp.enabled !== false) {
-    const port = Number(dynamicSmtp.port) || 465;
-    const isSecure = Boolean(dynamicSmtp.secure) || port === 465;
-
-    return nodemailer.createTransport({
-      host: dynamicSmtp.host.trim(),
-      port,
-      secure: isSecure,
-      auth: {
-        user: dynamicSmtp.user.trim(),
-        pass: dynamicSmtp.pass ? dynamicSmtp.pass.trim() : ''
-      },
-      tls: {
-        rejectUnauthorized: false
-      },
-      requireTLS: dynamicSmtp.requireTls !== false
+    return createSmtpTransport({
+      host: dynamicSmtp.host,
+      port: dynamicSmtp.port,
+      secure: dynamicSmtp.secure,
+      user: dynamicSmtp.user,
+      pass: dynamicSmtp.pass,
+      requireTls: dynamicSmtp.requireTls
     });
   }
 
@@ -53,6 +96,10 @@ export const getTransporter = async (passedSettings = null) => {
   if (config.email.service) {
     return nodemailer.createTransport({
       service: config.email.service,
+      family: 4,
+      connectionTimeout: 20000,
+      greetingTimeout: 20000,
+      socketTimeout: 30000,
       auth: {
         user: config.email.user,
         pass: config.email.pass
@@ -61,17 +108,13 @@ export const getTransporter = async (passedSettings = null) => {
   }
 
   if (config.email.host && config.email.user) {
-    return nodemailer.createTransport({
+    return createSmtpTransport({
       host: config.email.host,
       port: config.email.port,
       secure: config.email.secure,
-      auth: {
-        user: config.email.user,
-        pass: config.email.pass
-      },
-      tls: {
-        rejectUnauthorized: false
-      }
+      user: config.email.user,
+      pass: config.email.pass,
+      requireTls: true
     });
   }
 
@@ -345,7 +388,7 @@ export const sendInquiryEmails = async ({ inquiry }) => {
       let customerSent = false;
 
       try {
-        await transporter.sendMail(adminMailOptions);
+        await sendMailWithRetry(transporter, adminMailOptions);
         adminSent = true;
         console.log(`[Nodemailer] Admin notification sent successfully to ${adminRecipient} for ${inquiry.reference}`);
       } catch (adminErr) {
@@ -353,7 +396,7 @@ export const sendInquiryEmails = async ({ inquiry }) => {
       }
 
       try {
-        await transporter.sendMail(customerMailOptions);
+        await sendMailWithRetry(transporter, customerMailOptions);
         customerSent = true;
         console.log(`[Nodemailer] Customer acknowledgment sent successfully to ${inquiry.email} for ${inquiry.reference}`);
       } catch (customerErr) {
@@ -403,25 +446,43 @@ export const sendTestEmail = async ({ to, smtpConfig }) => {
     throw new Error('SMTP Host and Username/Email are required to test connection.');
   }
 
-  const port = Number(smtpConfig.port) || 587;
+  const port = Number(smtpConfig.port) || 465;
   const isSecure = Boolean(smtpConfig.secure) || port === 465;
 
-  const transporter = nodemailer.createTransport({
-    host: smtpConfig.host.trim(),
+  let transporter = createSmtpTransport({
+    host: smtpConfig.host,
     port,
     secure: isSecure,
-    auth: {
-      user: smtpConfig.user.trim(),
-      pass: smtpConfig.pass ? smtpConfig.pass.trim() : ''
-    },
-    tls: {
-      rejectUnauthorized: false
-    },
-    requireTLS: smtpConfig.requireTls !== false
+    user: smtpConfig.user,
+    pass: smtpConfig.pass,
+    requireTls: smtpConfig.requireTls
   });
 
-  // 1. Verify connection
-  await transporter.verify();
+  // 1. Verify connection with auto-fallback on timeout (e.g. from 587 to 465 or vice-versa)
+  try {
+    await transporter.verify();
+  } catch (err) {
+    const isTimeout = /timeout|econnreset|etimedout/i.test(err?.message || '');
+    if (isTimeout) {
+      const fallbackPort = port === 465 ? 587 : 465;
+      const fallbackSecure = fallbackPort === 465;
+      console.warn(`[Mailer Warning] Primary SMTP port ${port} timed out. Attempting auto-fallback to port ${fallbackPort} (secure: ${fallbackSecure})...`);
+
+      const fallbackTransporter = createSmtpTransport({
+        host: smtpConfig.host,
+        port: fallbackPort,
+        secure: fallbackSecure,
+        user: smtpConfig.user,
+        pass: smtpConfig.pass,
+        requireTls: smtpConfig.requireTls
+      });
+
+      await fallbackTransporter.verify();
+      transporter = fallbackTransporter;
+    } else {
+      throw err;
+    }
+  }
 
   // 2. Send test email
   const fromName = smtpConfig.fromName || 'Supplimed Healthcare';
@@ -484,7 +545,7 @@ Supplimed Management Panel
     }
   };
 
-  const info = await transporter.sendMail(mailOptions);
+  const info = await sendMailWithRetry(transporter, mailOptions);
   return {
     success: true,
     messageId: info.messageId,
@@ -584,7 +645,7 @@ ${brandName} Portal Security
     };
 
     if (transporter) {
-      const info = await transporter.sendMail(mailOptions);
+      const info = await sendMailWithRetry(transporter, mailOptions);
       console.log(`[Nodemailer] OTP email sent successfully to ${to}. MessageId: ${info.messageId}`);
       return { success: true, messageId: info.messageId };
     } else {
@@ -636,7 +697,7 @@ export const sendPasswordChangedConfirmationEmail = async ({ to, name }) => {
     };
 
     if (transporter) {
-      await transporter.sendMail(mailOptions);
+      await sendMailWithRetry(transporter, mailOptions);
     }
     return { success: true };
   } catch (err) {
